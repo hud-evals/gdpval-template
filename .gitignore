@@ -1,0 +1,48 @@
+# Python bytecode/cache
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Local environments and secrets
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+env/
+ENV/
+
+# Python packaging/build output
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+MANIFEST
+
+# Test/type/lint caches
+.cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+.coverage.*
+htmlcov/
+
+# HUD local state
+.hud/
+.hud_eval.toml
+hud.lock.yaml
+
+# Local smoke-output scratch space
+.localtest/
+
+# Editor/OS noise
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

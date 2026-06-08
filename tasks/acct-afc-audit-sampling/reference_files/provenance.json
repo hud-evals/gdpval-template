@@ -1,0 +1,13 @@
+{
+  "gdpval_task_id": "83d10b06-26d1-4636-a32c-23f92c57f30b",
+  "source_dataset": "openai/gdpval (gold subset)",
+  "artifacts": [
+    {
+      "path": "Population v2.xlsx",
+      "type": "xlsx",
+      "provenance": "authentic GDPval reference file",
+      "source_url": "https://huggingface.co/datasets/openai/gdpval/resolve/main/reference_files/cc781e4dc0985c8eb327a53ec03b5900/Population%20v2.xlsx",
+      "present": true
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+# Git/local project state
+.git/
+.gitignore
+.hud/
+.hud_eval.toml
+hud.lock.yaml
+
+# Local envs and secrets
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+env/
+ENV/
+
+# Python/editor caches
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+.coverage.*
+htmlcov/
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Packaging/build output
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Authoring-only utilities and docs are not needed at evaluation time.
+README.md
+download_reference_files.py
+tasks.py
+
+# Never bake answer keys into the runtime image. Rubrics travel as task args
+# through tasks/__init__.py, not as solver-readable files under /app/tasks.
+tasks/*/_hidden/
+
+# Local scratch output
+.localtest/

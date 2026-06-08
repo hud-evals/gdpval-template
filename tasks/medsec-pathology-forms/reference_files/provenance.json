@@ -1,0 +1,22 @@
+{
+  "gdpval_task_id": "a0552909-bc66-4a3a-8970-ee0d17b49718",
+  "source_dataset": "openai/gdpval (gold subset)",
+  "artifacts": [
+    {
+      "path": "July 2025 - Bulk Form Needed.xlsx",
+      "type": "xlsx",
+      "provenance": "authentic GDPval reference file",
+      "source_url": "https://huggingface.co/datasets/openai/gdpval/resolve/main/reference_files/770ea5e60952d111e5403a1ea116646b/July%202025%20-%20Bulk%20Form%20Needed.xlsx"
+    },
+    {
+      "path": "REACH LOGO.pdf",
+      "type": "pdf",
+      "provenance": "authentic GDPval reference file",
+      "source_url": "https://huggingface.co/datasets/openai/gdpval/resolve/main/reference_files/18778653fb8f70431e7237e613050563/REACH%20LOGO.pdf"
+    }
+  ],
+  "present": {
+    "July 2025 - Bulk Form Needed.xlsx": true,
+    "REACH LOGO.pdf": true
+  }
+}

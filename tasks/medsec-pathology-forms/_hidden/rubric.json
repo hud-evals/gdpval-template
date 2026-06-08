@@ -1,0 +1,24 @@
+{
+  "_README": "Plain readable answer key, withheld from the agent's workspace. Tuned to the REAL GDPval file 'July 2025 - Bulk Form Needed.xlsx' (30 patients across three labs: Minnesota / Arizona / Canyon Pathology). The grader recovers each patient's lab from the form and checks the agent's per-lab sheets.",
+  "required_columns": ["Patient ID", "Patient First Name", "Patient Last Name", "Date Of Birth", "Pathology Accession", "Request Sent Date"],
+  "correct_analysis": "Read the July 2025 bulk form and split it into one sheet per pathology lab — Minnesota Pathology, Arizona Pathology, and Canyon Pathology. Each patient row belongs on exactly the sheet for the lab named in its 'Lab Name' field; no patient may be duplicated across sheets or dropped. Each lab sheet carries the patient's ID, first and last name, date of birth, pathology accession number, and request sent date, copied without alteration, with a clear header identifying the lab and the order month (July 2025).",
+  "do_not_overreward": [
+    "Putting all patients on one sheet or mixing patients across labs.",
+    "Dropping required patient columns (accession number, DOB, request date).",
+    "Inventing patients or accession numbers not in the form."
+  ],
+  "axis_definitions": {
+    "factual_accuracy": "Every patient is routed to the correct lab; IDs, names, DOBs, and accession numbers are copied exactly.",
+    "professional_judgment": "Clean, consistent per-lab sheets a lab intake desk could act on without follow-up.",
+    "evidence_grounding": "Every listed patient traces to a row in the bulk form; nothing invented.",
+    "completeness": "All three lab sheets present, every patient placed, required columns and headers present.",
+    "format_regulatory_compliance": "A parseable .xlsx with one sheet per lab, sheets named for the lab, and a lab+month header.",
+    "clarity": "Headers and columns are clear enough to send to a lab as-is."
+  },
+  "llm_judge_reference": {
+    "task_goal": "Score a per-lab oncology bulk-order workbook for correct patient routing, completeness, and clean formatting.",
+    "hidden_reference": "Top-band answers produce three correctly-named lab sheets, route every patient to the correct lab with ID/name/DOB/accession/date intact, and add a lab+month header — no mixing, no inventions.",
+    "credit": ["Correct patient->lab routing", "All required columns", "Lab+month headers", "Exact data copy"],
+    "penalize": ["Mixed/duplicated/dropped patients", "Missing columns", "Invented patients or accession numbers"]
+  }
+}

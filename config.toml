@@ -1,0 +1,26 @@
+[dataset]
+dataset = "gdpval-knowledge-work"
+# Authentic GDPval reference files only.
+source = "GDPval gold subset (openai/gdpval)"
+
+[hud]
+production_environment = "gdpval-template"
+production_taskset = "gdpval-knowledge-work-batch"
+# Calibration model revealed at bid acceptance; pass@5, target per-task 0-60%.
+default_model = "calibration-model-tbd"
+default_rollouts = 5
+
+[grading]
+# Graders are plain, readable Python (tasks/<slug>/grader.py). Answer keys are
+# plain JSON read locally by tasks/__init__.py and excluded from the runtime image.
+# Deterministic axis weighted >= 0.40 of total; inventing authority hard-caps the score.
+default_det_weight = 0.45
+fabrication_cap = 0.30
+
+[judge]
+# HUD-native LLMJudgeGrader uses HUD_API_KEY and the HUD inference gateway.
+# Override the model via GDPVAL_JUDGE_MODEL if needed.
+model = "claude-haiku-4-5"
+
+[build]
+script = "build_reference_files.py"   # per-task, at tasks/<slug>/build_reference_files.py

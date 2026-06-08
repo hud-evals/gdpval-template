@@ -1,0 +1,33 @@
+{
+  "_README": "Plain readable answer key, withheld from the agent's workspace. Tuned to the REAL GDPval file 'Population v2.xlsx' (1,516 KRI rows: No | Division | Sub-Division | Country | Legal Entity | KRIs | Q3 2024 KRI | Q2 2024 KRI). The grader recomputes risk criteria from this file and checks the agent's sample for precision and coverage, not an exact set.",
+  "selection_criteria": {
+    "variance_threshold": 0.20,
+    "high_risk_countries": ["Cayman Islands", "Pakistan", "UAE"],
+    "past_issue_entities": [],
+    "zero_value_selects": true
+  },
+  "sample_size_expectation": {
+    "note": "90% confidence, 10% tolerable error. Defensible methods: AICPA attribute-sampling table (~24 with zero expected deviations) or the proportion formula z^2*p*(1-p)/e^2 (~68 at p=0.5). The judge accepts any documented, consistent method; the deterministic axis only checks a Sample Size Calculation tab exists and the sample lands in a plausible range.",
+    "plausible_n_range": [20, 200]
+  },
+  "correct_analysis": "Compute the quarter-on-quarter variance for each KRI from Q2 and Q3 2024 (treat a zero prior quarter as a zero-value flag, not a ratio). Build a risk-based audit sample whose every member is justifiable: prioritise KRIs with greater than 20% QoQ variance, zero-value rows, and the high-risk jurisdictions present in the file (Cayman Islands, Pakistan, UAE), and ensure the 13 Division/Sub-Division combinations are represented. Document a sample-size calculation at 90% confidence and 10% tolerable error. The result is a defensible *sample* — a clear subset of the 1,516 rows, each traceable by its 'No' identifier and flagged — not the whole risky population and not an unjustified grab.",
+  "do_not_overreward": [
+    "Flagging the entire population or all ~800 risky rows instead of a sized sample.",
+    "Selecting rows that meet no documented risk criterion.",
+    "A sample-size number with no method or workings; dropping the 'No' identifiers so selections cannot be traced."
+  ],
+  "axis_definitions": {
+    "factual_accuracy": "QoQ variance is computed correctly and every flagged row genuinely meets a stated risk criterion against the population.",
+    "professional_judgment": "A sensibly sized, risk-weighted sample with Division/Sub-Division and jurisdiction coverage — neither over- nor under-selecting.",
+    "evidence_grounding": "Every selected row is traceable to a population row by 'No'; the rationale ties to the file's actual columns.",
+    "completeness": "Sample Size Calculation, variance computation, and a flagged sample are all present.",
+    "format_regulatory_compliance": "A parseable .xlsx sample workbook retaining the identifier column and a sample flag.",
+    "clarity": "Workings and selection rationale are documented well enough to defend in review."
+  },
+  "llm_judge_reference": {
+    "task_goal": "Score an internal-audit AFC KRI sample-selection workbook for correct, defensible, risk-based sampling against the real population file.",
+    "hidden_reference": "Top-band answers document a defensible sample-size method, compute QoQ variance, and produce a sized, risk-justified sample with full Division/Sub-Division and high-risk-jurisdiction coverage, traceable by 'No' — without flagging the whole population.",
+    "credit": ["Risk-justified selection (high precision)", "Documented sample-size workings", "Division/jurisdiction coverage", "Traceable identifiers"],
+    "penalize": ["Selecting everything", "Unjustified selections", "Invented sample-size rule"]
+  }
+}
