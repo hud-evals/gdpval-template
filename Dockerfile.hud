@@ -1,6 +1,6 @@
-# Frozen, CPU-only, offline image for GDPval-style knowledge-work tasks.
-# No GPU, no network at evaluation time. The agent reads the staged bundle and
-# writes a native-format deliverable using the document toolchain installed here.
+# Frozen, CPU-only image for GDPval-style knowledge-work tasks. The agent reads
+# the staged bundle and writes a native-format deliverable using the document
+# toolchain installed here.
 FROM python:3.12-slim
 COPY --from=ghcr.io/astral-sh/uv:0.8.24 /uv /uvx /bin/
 
@@ -13,21 +13,21 @@ ENV PYTHONUNBUFFERED=1 \
 # System libs occasionally needed by document/spreadsheet tooling plus small
 # inspection utilities agents commonly use against staged reference files.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        file less libxml2 libxslt1.1 ripgrep unzip \
+        bubblewrap file git less libxml2 libxslt1.1 ripgrep unzip \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY pyproject.toml uv.lock* /app/
 RUN uv sync --frozen --no-dev
+# Agents commonly invoke `python3` directly through the workspace shell. Install
+# the document toolchain into the system interpreter as well as the app venv.
+RUN uv pip install --system openpyxl pandas xlsxwriter pillow pypdf python-docx python-pptx lxml
+RUN python3 -c "import docx, lxml, openpyxl, pandas, PIL, pptx, pypdf, xlsxwriter"
 
 # Solver workspace, owned by the demoted (non-root) solver user.
 RUN useradd -m -u 1000 solver && mkdir -p /workspace/target && chown -R 1000:1000 /workspace
 
 COPY . /app
-
-# Defense in depth: .dockerignore excludes author-local answer keys, but remove
-# any stray `_hidden` directories if a different build frontend ignores it.
-RUN find /app/tasks -type d -name _hidden -prune -exec rm -rf {} +
 
 # Verify each task's reference files at build time (offline thereafter).
 # Keep this as shell, not a Python heredoc: HUD's analysis Dockerfile generator
@@ -37,4 +37,8 @@ RUN set -eux; \
         python "$build"; \
     done
 
-CMD ["hud", "dev", "env:env", "--stdio"]
+# Defense in depth: env.py loads rubrics/graders into memory at startup and
+# scrubs authoring files from /app before the solver shell is exposed.
+RUN find /app/tasks -path '*/_hidden' -type d -exec chmod -R go-rwx {} +
+
+CMD ["hud", "serve", "env.py", "--host", "0.0.0.0"]

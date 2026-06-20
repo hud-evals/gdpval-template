@@ -13,8 +13,13 @@ variance) must be present. The LLM-judge axis covers sizing and overall quality.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Any
+
+APP_ROOT = Path(__file__).resolve().parents[2]
+if str(APP_ROOT) not in sys.path:
+    sys.path.insert(0, str(APP_ROOT))
 
 import deliverable_io as dio
 import native_grading

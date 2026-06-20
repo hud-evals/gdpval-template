@@ -46,14 +46,14 @@ TASK_ARGS = {"prompt": PROMPT, "task_slug": TASK_SLUG, "deliverable": DELIVERABL
 
 
 def build_task():
-    from hud.eval.task import Task
+    from hud import Task
 
     return Task(
-        env={"name": "gdpval-template"},
-        scenario="gdpval_task",
+        env="gdpval-template",
+        id="gdpval_task",
         slug=TASK_SLUG,
         args=TASK_ARGS,
-        metadata={
+        columns={
             "gdpval_task_id": GDPVAL_TASK_ID,
             "occupation": "Accountants and Auditors",
             "sector": "Professional, Scientific, and Technical Services",
