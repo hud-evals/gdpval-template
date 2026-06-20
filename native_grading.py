@@ -5,8 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from hud.native.graders import Grade, LLMJudgeGrader
-from hud.tools.types import SubScore
+from hud.graders import EvaluationResult, LLMJudgeGrader, SubScore, combine
 
 FABRICATION_CAP = 0.30
 DEFAULT_MODEL = "claude-haiku-4-5"
@@ -73,7 +72,7 @@ async def blend_with_native_judge(
             weight=llm_weight,
             metadata={"status": "no_hud_api_key"},
         )
-        result = Grade.from_subscores([det_subscore, missing_judge])
+        result = await combine(det_subscore, missing_judge)
         return _as_dict(result, status="det_only:no_hud_api_key", deterministic=det_detail)
 
     quality = await LLMJudgeGrader.grade(
@@ -103,7 +102,7 @@ async def blend_with_native_judge(
         ],
         model=model,
     )
-    result = Grade.from_subscores([det_subscore, quality, fabrication_guard])
+    result = await combine(det_subscore, quality, fabrication_guard)
     final_reward = float(result.reward)
     fabrication_capped = fabrication_guard.value < 0.5 and final_reward > FABRICATION_CAP
     if fabrication_capped:
@@ -115,7 +114,7 @@ async def blend_with_native_judge(
     return out
 
 
-def _as_dict(result, *, status: str, deterministic: dict[str, Any]) -> dict[str, Any]:
+def _as_dict(result: EvaluationResult, *, status: str, deterministic: dict[str, Any]) -> dict[str, Any]:
     subscores = [item.model_dump() for item in (result.subscores or [])]
     return {
         "reward": round(float(result.reward), 6),

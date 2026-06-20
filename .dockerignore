@@ -45,9 +45,5 @@ README.md
 download_reference_files.py
 tasks.py
 
-# Never bake answer keys into the runtime image. Rubrics travel as task args
-# through tasks/__init__.py, not as solver-readable files under /app/tasks.
-tasks/*/_hidden/
-
 # Local scratch output
 .localtest/

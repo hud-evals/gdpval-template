@@ -74,25 +74,16 @@ def _validate_rubric(slug: str, rubric: dict[str, Any]) -> None:
 
 
 def _build_one(slug: str):
-    from hud.environment import Environment
-
     mod = _load_task_module(slug)
-    grader_source = (ROOT / slug / "grader.py").read_text(encoding="utf-8")
     rubric_path = ROOT / slug / "_hidden" / "rubric.json"
     if not rubric_path.is_file():
         raise RuntimeError(f"{slug}: missing rubric at {rubric_path}")
     rubric: dict[str, Any] = json.loads(rubric_path.read_text(encoding="utf-8"))
     _validate_rubric(slug, rubric)
 
-    args = {
-        **mod.TASK_ARGS,
-        "grader_source": grader_source,
-        "rubric": rubric,
-    }
     base = mod.build_task()
-    base.args = args
-    env_name = _load_env_name()
-    base.env = Environment(env_name).connect_hub(env_name)
+    base.args = dict(mod.TASK_ARGS)
+    base.env = _load_env_name()
     return base
 
 
