@@ -36,22 +36,13 @@ GRADER_CONFIG = {
 
 TASK_ARGS = {"prompt": PROMPT, "task_slug": TASK_SLUG, "deliverable": DELIVERABLE}
 
-
-def build_task():
-    from hud.eval.task import Task
-
-    return Task(
-        env={"name": "gdpval-template"},
-        scenario="gdpval_task",
-        slug=TASK_SLUG,
-        args=TASK_ARGS,
-        metadata={
-            "gdpval_task_id": GDPVAL_TASK_ID,
-            "occupation": "Medical Secretaries and Administrative Assistants",
-            "sector": "Health Care and Social Assistance",
-            "deliverable_format": "xlsx",
-            "bundle_status": "authentic_gdpval_reference_files",
-            "grader_det_weight": GRADER_CONFIG["det_weight"],
-            "primary_failure_mode": "mis-routed tests between lab sheets / missing required columns",
-        },
-    )
+# Filterable leaderboard facets, attached as Task.columns in tasks/__init__.py.
+METADATA = {
+    "gdpval_task_id": GDPVAL_TASK_ID,
+    "occupation": "Medical Secretaries and Administrative Assistants",
+    "sector": "Health Care and Social Assistance",
+    "deliverable_format": "xlsx",
+    "bundle_status": "authentic_gdpval_reference_files",
+    "grader_det_weight": GRADER_CONFIG["det_weight"],
+    "primary_failure_mode": "mis-routed tests between lab sheets / missing required columns",
+}

@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Frozen, CPU-only, offline image for GDPval-style knowledge-work tasks.
 # No GPU, no network at evaluation time. The agent reads the staged bundle and
 # writes a native-format deliverable using the document toolchain installed here.
@@ -10,31 +11,30 @@ ENV PYTHONUNBUFFERED=1 \
     WORKSPACE_DIR=/workspace/target \
     PATH="/app/.venv/bin:$PATH"
 
-# System libs occasionally needed by document/spreadsheet tooling plus small
-# inspection utilities agents commonly use against staged reference files.
+# Doc/spreadsheet tooling libs + inspection utilities, plus util-linux for `setpriv`
+# (the solver-shell uid drop). No bubblewrap: it breaks shells on the hosted runner.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        file less libxml2 libxslt1.1 ripgrep unzip \
+        file less libxml2 libxslt1.1 ripgrep unzip util-linux \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY pyproject.toml uv.lock* /app/
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev || uv sync --no-dev
 
-# Solver workspace, owned by the demoted (non-root) solver user.
+# Solver workspace, owned by the uid 1000 the agent shell drops to.
 RUN useradd -m -u 1000 solver && mkdir -p /workspace/target && chown -R 1000:1000 /workspace
 
 COPY . /app
 
-# Defense in depth: .dockerignore excludes author-local answer keys, but remove
-# any stray `_hidden` directories if a different build frontend ignores it.
+# Strip any answer-key dir from the image: rubrics ride in git but must never deploy.
 RUN find /app/tasks -type d -name _hidden -prune -exec rm -rf {} +
 
 # Verify each task's reference files at build time (offline thereafter).
-# Keep this as shell, not a Python heredoc: HUD's analysis Dockerfile generator
-# can normalize heredoc indentation.
 RUN set -eux; \
     for build in /app/tasks/*/build_reference_files.py; do \
         python "$build"; \
     done
 
-CMD ["hud", "dev", "env:env", "--stdio"]
+# Serve the Environment over the control channel.
+EXPOSE 8765
+CMD ["hud", "serve", "env:env", "--host", "0.0.0.0", "--port", "8765"]
