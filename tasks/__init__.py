@@ -6,18 +6,19 @@ Each task is a package under tasks/<slug>/:
   build_reference_files.py -- verifies the solver-visible reference files
   reference_files/   -- staged mixed-format reference files
   _hidden/rubric.json -- plain JSON answer key, read here and excluded from the image
+
+Each task row is minted by calling the env.py ``gdpval_task`` template with the
+task's args, grader source, and rubric (the rubric never enters the image).
 """
 
 from __future__ import annotations
 
 import importlib.util
 import json
-import tomllib
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent
-APP_ROOT = ROOT.parent
 REQUIRED_AXES = {
     "factual_accuracy",
     "professional_judgment",
@@ -26,17 +27,6 @@ REQUIRED_AXES = {
     "format_regulatory_compliance",
     "clarity",
 }
-
-
-def _load_env_name() -> str:
-    config_path = APP_ROOT / "config.toml"
-    if config_path.is_file():
-        with config_path.open("rb") as handle:
-            hud = tomllib.load(handle).get("hud", {})
-        name = hud.get("production_environment") or hud.get("environment")
-        if isinstance(name, str) and name.strip():
-            return name.strip()
-    return "gdpval-template"
 
 
 def _load_task_module(slug: str):
@@ -74,7 +64,7 @@ def _validate_rubric(slug: str, rubric: dict[str, Any]) -> None:
 
 
 def _build_one(slug: str):
-    from hud.environment import Environment
+    from env import gdpval_task  # the template factory mints one Task per call
 
     mod = _load_task_module(slug)
     grader_source = (ROOT / slug / "grader.py").read_text(encoding="utf-8")
@@ -84,16 +74,10 @@ def _build_one(slug: str):
     rubric: dict[str, Any] = json.loads(rubric_path.read_text(encoding="utf-8"))
     _validate_rubric(slug, rubric)
 
-    args = {
-        **mod.TASK_ARGS,
-        "grader_source": grader_source,
-        "rubric": rubric,
-    }
-    base = mod.build_task()
-    base.args = args
-    env_name = _load_env_name()
-    base.env = Environment(env_name).connect_hub(env_name)
-    return base
+    task = gdpval_task(**mod.TASK_ARGS, grader_source=grader_source, rubric=rubric)
+    task.slug = mod.TASK_SLUG
+    task.columns = dict(mod.METADATA)  # filterable leaderboard facets
+    return task
 
 
 def build_tasks() -> list:

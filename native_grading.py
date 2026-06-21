@@ -5,15 +5,17 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from hud.native.graders import Grade, LLMJudgeGrader
-from hud.tools.types import SubScore
+from hud.graders import LLMJudgeGrader, SubScore, _combine_subscores
 
 FABRICATION_CAP = 0.30
 DEFAULT_MODEL = "claude-haiku-4-5"
 
 
 def judge_available() -> bool:
-    return bool(os.environ.get("HUD_API_KEY", "").strip())
+    # The judge uses the HUD gateway via settings.api_key, so check that, not the env var.
+    from hud.settings import settings
+
+    return bool(getattr(settings, "api_key", None))
 
 
 def criteria_from_key(key: dict[str, Any], axis_weights: dict[str, float], extra_instruction: str) -> list[tuple[str, float]]:
@@ -73,7 +75,7 @@ async def blend_with_native_judge(
             weight=llm_weight,
             metadata={"status": "no_hud_api_key"},
         )
-        result = Grade.from_subscores([det_subscore, missing_judge])
+        result = _combine_subscores([det_subscore, missing_judge])
         return _as_dict(result, status="det_only:no_hud_api_key", deterministic=det_detail)
 
     quality = await LLMJudgeGrader.grade(
@@ -103,7 +105,8 @@ async def blend_with_native_judge(
         ],
         model=model,
     )
-    result = Grade.from_subscores([det_subscore, quality, fabrication_guard])
+    # `combine` only does a normalized weighted sum, so the hard cap is applied by hand below.
+    result = _combine_subscores([det_subscore, quality, fabrication_guard])
     final_reward = float(result.reward)
     fabrication_capped = fabrication_guard.value < 0.5 and final_reward > FABRICATION_CAP
     if fabrication_capped:
@@ -115,14 +118,23 @@ async def blend_with_native_judge(
     return out
 
 
+def _strip_parameters(info: dict[str, Any]) -> dict[str, Any]:
+    # Each subscore's metadata carries the SDK judge's `_parameters` — the full
+    # answer + criteria, echoed back. Drop it: the result is framed as one JSON line
+    # over the control channel (64KB limit), and a large deliverable blows past it.
+    return {
+        name: ({k: v for k, v in meta.items() if k != "_parameters"} if isinstance(meta, dict) else meta)
+        for name, meta in (info or {}).items()
+    }
+
+
 def _as_dict(result, *, status: str, deterministic: dict[str, Any]) -> dict[str, Any]:
-    subscores = [item.model_dump() for item in (result.subscores or [])]
     return {
         "reward": round(float(result.reward), 6),
         "info": {
             "status": status,
             "deterministic": deterministic,
-            "subscores": subscores,
-            "native_grading_info": result.info,
+            "subscores": [item.model_dump() for item in (result.subscores or [])],
+            "native_grading_info": _strip_parameters(result.info),
         },
     }
