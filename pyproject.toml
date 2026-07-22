@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "HUD environment template for GDPval-style knowledge-work evaluations"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "hud-python[agents]>=0.6.0",
+    "hud[agents]>=0.6.0",
     # Native deliverable readers (deliverable_io.py).
     "python-docx>=1.1.0",
     "openpyxl>=3.1.0",

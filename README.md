@@ -11,7 +11,7 @@ with an LLM judge, plus a fabrication cap.
 ```text
 env.py             # Environment + the gdpval_task template + the offline workspace harness
 Dockerfile.hud     # Python 3.12 CPU image, served on the control channel
-pyproject.toml     # deps (hud-python[agents] >= 0.6) + uv.lock
+pyproject.toml     # deps (hud[agents] >= 0.6) + uv.lock
 tasks.py           # public `tasks` list + re-exported `env` — the loader entrypoint
 tasks/<slug>/
   task.py          # prompt, metadata, deliverable contract
