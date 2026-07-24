@@ -17,6 +17,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from hud.graders import EvaluationResult
+
 import deliverable_io as dio
 import native_grading
 
@@ -115,9 +117,13 @@ def _reference_context(workspace: Path) -> str:
     return "\n\n".join(parts)
 
 
-async def grade(workspace: Path, deliverable: Path, key: dict[str, Any]) -> dict[str, Any]:
+async def grade(
+    workspace: Path,
+    deliverable: Path,
+    key: dict[str, Any],
+) -> EvaluationResult:
     if not deliverable.is_file():
-        return {"reward": 0.0, "info": {"status": "missing_deliverable"}}
+        return native_grading.zero_result("missing_deliverable")
     det_score, det_detail = _deterministic(workspace, deliverable, key)
     return await native_grading.blend_with_native_judge(
         det_score=det_score,

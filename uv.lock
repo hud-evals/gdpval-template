@@ -392,7 +392,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "hud", extras = ["agents"], specifier = ">=0.6.0" },
+    { name = "hud", extras = ["agents"], specifier = ">=0.6.12.dev0" },
     { name = "openpyxl", specifier = ">=3.1.0" },
     { name = "pypdf", specifier = ">=4.2.0" },
     { name = "python-docx", specifier = ">=1.1.0" },
@@ -492,7 +492,7 @@ wheels = [
 
 [[package]]
 name = "hud"
-version = "0.6.11"
+version = "0.6.12.dev0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anthropic" },
@@ -513,9 +513,9 @@ dependencies = [
     { name = "typer" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f0/3e/d292cbf4e22db78eec966044526fdfa97203b91b11831dffd211c1cd1e6c/hud-0.6.11.tar.gz", hash = "sha256:e71615efe5d4798089e907f5bf4cb24071ed63cc9bfa7e2fdb0b7fe1e75ae5aa", size = 351389, upload-time = "2026-07-20T13:17:24.237Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b4/a2/ec51aa7b56e26997914cfd96f7d260b1cc944216e20dfdb526fee603e9e2/hud-0.6.12.dev0.tar.gz", hash = "sha256:9c4e356cda739f475ad984b166be0f5f956851b02a398a86193c20d8a390cc76", size = 352225, upload-time = "2026-07-21T10:23:09.414Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/46/bb/7a500ac60ad7eaa8eee42b12c4e5475c4ecb83cefacc67b8e6a26b02a433/hud-0.6.11-py3-none-any.whl", hash = "sha256:ffaaa349bc57ca7b212c6340b8c7b78c4c789172944ae87d158b58f1e5409b43", size = 455854, upload-time = "2026-07-20T13:17:22.985Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/bd/dd486d83f01d51b13873522bc8586f1fa26234651f754d65eaa376100a5e/hud-0.6.12.dev0-py3-none-any.whl", hash = "sha256:4ce211fd911dc3cc614e659213afa1acf7601a096dc0c884829b37e75f22b099", size = 456702, upload-time = "2026-07-21T10:23:07.645Z" },
 ]
 
 [[package]]
