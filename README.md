@@ -32,7 +32,9 @@ native_grading.py  # adapter over hud.graders + the fabrication cap
   never baked into the deployed image.
 - Grading blends a deterministic axis (parse the deliverable, check structure)
   with a weighted-axis LLM judge, plus a fabrication guard that caps the reward if
-  the deliverable invents data not in the reference bundle.
+  the deliverable invents data not in the reference bundle. Graders return the
+  SDK-native `EvaluationResult` and preserve criterion explanations as nested
+  `SubScore` data on the evaluation span.
 
 Offline is enforced at the platform layer, not in the env: without bubblewrap,
 `network=False` is not an air-gap, so the env-side guard is the secret strip.

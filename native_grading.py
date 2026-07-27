@@ -5,10 +5,18 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from hud.graders import LLMJudgeGrader, SubScore, _combine_subscores
+from hud.graders import EvaluationResult, LLMJudgeGrader, SubScore, _combine_subscores
 
 FABRICATION_CAP = 0.30
 DEFAULT_MODEL = "claude-haiku-4-5"
+
+
+def zero_result(status: str, **info: Any) -> EvaluationResult:
+    return EvaluationResult(
+        reward=0.0,
+        content=f"status={status} reward=0.000",
+        info={"status": status, **info},
+    )
 
 
 def judge_available() -> bool:
@@ -49,7 +57,7 @@ async def blend_with_native_judge(
     submitted: str,
     extra_instruction: str,
     reference_context: str = "",
-) -> dict[str, Any]:
+) -> EvaluationResult:
     det_subscore = SubScore(
         name="deterministic",
         value=max(0.0, min(1.0, float(det_score))),
@@ -70,16 +78,15 @@ async def blend_with_native_judge(
 
     if not judge_available():
         missing_judge = SubScore(
-            name="llm_judge",
+            name="LLMJudgeGrader",
             value=0.0,
             weight=llm_weight,
             metadata={"status": "no_hud_api_key"},
         )
         result = _combine_subscores([det_subscore, missing_judge])
-        return _as_dict(result, status="det_only:no_hud_api_key", deterministic=det_detail)
+        return _finalize(result, status="det_only:no_hud_api_key")
 
     quality = await LLMJudgeGrader.grade(
-        name="llm_judge",
         weight=llm_weight,
         answer=judged_answer,
         question=question,
@@ -105,36 +112,49 @@ async def blend_with_native_judge(
         ],
         model=model,
     )
-    # `combine` only does a normalized weighted sum, so the hard cap is applied by hand below.
     result = _combine_subscores([det_subscore, quality, fabrication_guard])
-    final_reward = float(result.reward)
-    fabrication_capped = fabrication_guard.value < 0.5 and final_reward > FABRICATION_CAP
+    fabrication_capped = fabrication_guard.value < 0.5 and result.reward > FABRICATION_CAP
     if fabrication_capped:
-        final_reward = FABRICATION_CAP
+        cap_penalty = SubScore(
+            name="fabrication_cap",
+            value=1.0,
+            weight=FABRICATION_CAP - result.reward,
+            info={"reason": "Fabrication guard failed; final reward capped."},
+        )
+        result = _combine_subscores([*(result.subscores or []), cap_penalty])
 
-    out = _as_dict(result, status="ok", deterministic=det_detail)
-    out["reward"] = round(final_reward, 6)
-    out["info"]["fabrication_capped"] = fabrication_capped
-    return out
-
-
-def _strip_parameters(info: dict[str, Any]) -> dict[str, Any]:
-    # Each subscore's metadata carries the SDK judge's `_parameters` — the full
-    # answer + criteria, echoed back. Drop it: the result is framed as one JSON line
-    # over the control channel (64KB limit), and a large deliverable blows past it.
-    return {
-        name: ({k: v for k, v in meta.items() if k != "_parameters"} if isinstance(meta, dict) else meta)
-        for name, meta in (info or {}).items()
-    }
+    return _finalize(result, status="ok", fabrication_capped=fabrication_capped)
 
 
-def _as_dict(result, *, status: str, deterministic: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "reward": round(float(result.reward), 6),
-        "info": {
-            "status": status,
-            "deterministic": deterministic,
-            "subscores": [item.model_dump() for item in (result.subscores or [])],
-            "native_grading_info": _strip_parameters(result.info),
-        },
-    }
+def _strip_subscore_parameters(subscore: SubScore) -> SubScore:
+    """Remove oversized grader inputs while preserving the native score tree."""
+    info = dict(subscore.info or {})
+    info.pop("_parameters", None)
+    children = (
+        [_strip_subscore_parameters(child) for child in subscore.children]
+        if subscore.children
+        else None
+    )
+    return subscore.model_copy(update={"info": info or None, "children": children})
+
+
+def _finalize(
+    result: EvaluationResult,
+    *,
+    status: str,
+    fabrication_capped: bool = False,
+) -> EvaluationResult:
+    subscores = [
+        _strip_subscore_parameters(subscore) for subscore in (result.subscores or [])
+    ]
+    info = {**result.info, "status": status}
+    if status == "ok":
+        info["fabrication_capped"] = fabrication_capped
+    return result.model_copy(
+        update={
+            "reward": round(float(result.reward), 6),
+            "content": f"status={status} reward={result.reward:.3f}",
+            "info": info,
+            "subscores": subscores,
+        }
+    )

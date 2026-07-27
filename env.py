@@ -245,8 +245,13 @@ def _resolve_deliverable(expected: Path) -> tuple[Path | None, dict[str, Any]]:
     }
 
 
-def _zero(status: str, **info: Any) -> dict[str, Any]:
-    return {"reward": 0.0, "info": {"status": status, **info}}
+def _zero(status: str, **info: Any) -> EvaluationResult:
+    return EvaluationResult(
+        reward=0.0,
+        content=f"status={status} reward=0.000",
+        info={"status": status, **info},
+        isError=status in ("grader_error", "invalid_grader_result"),
+    )
 
 
 def _workspace_preamble(deliverable_rel: str) -> str:
@@ -292,7 +297,12 @@ def _load_grader(task_slug: str, grader_source: str):
     return module
 
 
-async def _grade(task_slug: str, deliverable: Path, grader_source: str, rubric_arg: Any) -> dict[str, Any]:
+async def _grade(
+    task_slug: str,
+    deliverable: Path,
+    grader_source: str,
+    rubric_arg: Any,
+) -> EvaluationResult:
     grader = _load_grader(task_slug, grader_source)
     if isinstance(rubric_arg, dict) and rubric_arg:
         rubric = rubric_arg
@@ -301,21 +311,7 @@ async def _grade(task_slug: str, deliverable: Path, grader_source: str, rubric_a
     result = grader.grade(WORKSPACE_DIR, deliverable, rubric)
     if inspect.isawaitable(result):
         result = await result
-    return result if isinstance(result, dict) and "reward" in result else _zero("invalid_grader_result")
-
-
-def _to_eval(result: dict[str, Any]) -> EvaluationResult:
-    """Wrap a grader dict as the task's second-yield EvaluationResult."""
-    info = result.get("info", {}) if isinstance(result.get("info"), dict) else {}
-    status = str(info.get("status", "ok"))
-    reward = max(0.0, min(1.0, float(result.get("reward", 0.0))))  # the SDK doesn't clamp it
-    return EvaluationResult(
-        reward=reward,
-        done=True,
-        content=f"status={status} reward={reward:.3f}",
-        info=info,
-        isError=status in ("grader_error", "invalid_grader_result"),
-    )
+    return result if isinstance(result, EvaluationResult) else _zero("invalid_grader_result")
 
 
 async def _run(task_slug: str, prompt: str, deliverable_rel: str,
@@ -332,15 +328,15 @@ async def _run(task_slug: str, prompt: str, deliverable_rel: str,
 
     resolved_deliverable, resolution_info = _resolve_deliverable(deliverable)
     if resolved_deliverable is None:
-        yield _to_eval(_zero("missing_deliverable", **resolution_info))
+        yield _zero("missing_deliverable", **resolution_info)
         return
     try:
         result = await _grade(task_slug, resolved_deliverable, grader_source, rubric_arg)
         if resolution_info:
-            result.setdefault("info", {}).update(resolution_info)
-        yield _to_eval(result)
+            result = result.model_copy(update={"info": {**result.info, **resolution_info}})
+        yield result
     except Exception as exc:  # pragma: no cover - fail closed: any grader error scores 0
-        yield _to_eval(_zero("grader_error", reason=repr(exc)[:500]))
+        yield _zero("grader_error", reason=repr(exc)[:500])
 
 
 @env.template(

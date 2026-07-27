@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from hud.graders import SubScore
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -19,7 +20,6 @@ if str(ROOT) not in sys.path:
 
 import deliverable_io  # noqa: E402
 import native_grading  # noqa: E402
-from hud.graders import SubScore  # noqa: E402
 
 ACCT = "acct-afc-audit-sampling"
 
@@ -40,7 +40,7 @@ def _patch_judge(monkeypatch, *, fabrication_value: float, quality_value: float 
 
     async def _fake(cls, *, name=None, weight=0.0, **kwargs):
         value = fabrication_value if name == "fabrication_guard" else quality_value
-        return SubScore(name=name, weight=weight, value=value)
+        return SubScore(name=name or cls.name, weight=weight, value=value)
 
     monkeypatch.setattr(native_grading, "judge_available", lambda: True)
     monkeypatch.setattr(native_grading.LLMJudgeGrader, "grade", classmethod(_fake))
@@ -55,13 +55,13 @@ async def test_det_only_when_no_key(monkeypatch):
         key=_rubric(ACCT), axis_weights={"factual_accuracy": 1.0},
         submitted="deliverable text", extra_instruction="",
     )
-    assert out["info"]["status"] == "det_only:no_hud_api_key"
+    assert out.info["status"] == "det_only:no_hud_api_key"
     # reward = det_weight * det_score = 0.45 * 0.8 = 0.36 (judge contributes 0).
-    assert out["reward"] == pytest.approx(0.36, abs=1e-6)
-    subs = {s["name"]: s for s in out["info"]["subscores"]}
-    assert subs["deterministic"]["weight"] == pytest.approx(0.45)
-    assert subs["llm_judge"]["weight"] == pytest.approx(0.55)
-    assert subs["llm_judge"]["value"] == 0.0
+    assert out.reward == pytest.approx(0.36, abs=1e-6)
+    subs = {subscore.name: subscore for subscore in (out.subscores or [])}
+    assert subs["deterministic"].weight == pytest.approx(0.45)
+    assert subs["LLMJudgeGrader"].weight == pytest.approx(0.55)
+    assert subs["LLMJudgeGrader"].value == 0.0
 
 
 async def test_fabrication_hard_caps_reward(monkeypatch):
@@ -73,8 +73,13 @@ async def test_fabrication_hard_caps_reward(monkeypatch):
         key=_rubric(ACCT), axis_weights={"factual_accuracy": 1.0},
         submitted="text", extra_instruction="",
     )
-    assert out["info"]["fabrication_capped"] is True
-    assert out["reward"] == pytest.approx(native_grading.FABRICATION_CAP)
+    assert out.info["fabrication_capped"] is True
+    assert out.reward == pytest.approx(native_grading.FABRICATION_CAP)
+    subs = {subscore.name: subscore for subscore in (out.subscores or [])}
+    assert subs["fabrication_cap"].weight < 0
+    assert sum(subscore.value * subscore.weight for subscore in subs.values()) == pytest.approx(
+        out.reward
+    )
 
 
 async def test_no_fabrication_no_cap(monkeypatch):
@@ -85,8 +90,10 @@ async def test_no_fabrication_no_cap(monkeypatch):
         key=_rubric(ACCT), axis_weights={"factual_accuracy": 1.0},
         submitted="text", extra_instruction="",
     )
-    assert out["info"]["fabrication_capped"] is False
-    assert out["reward"] == pytest.approx(1.0)
+    assert out.info["fabrication_capped"] is False
+    assert out.reward == pytest.approx(1.0)
+    assert out.subscores is not None
+    assert "LLMJudgeGrader" in {subscore.name for subscore in out.subscores}
 
 
 def test_grading_result_fits_control_channel_frame():
@@ -97,16 +104,35 @@ def test_grading_result_fits_control_channel_frame():
     from hud.graders.combine import _combine_subscores
 
     big = "X" * 110_000  # roughly submitted[:50k] + reference_context[:60k]
-    meta = {"criteria": {"axis": {"verdict": "MET"}}, "model": "m",
-            "_parameters": {"answer": big, "criteria": ["..."], "question": "Grade."}}
+    meta = {
+        "model": "m",
+        "_parameters": {"answer": big, "criteria": ["..."], "question": "Grade."},
+    }
+    explanation = "A detailed judge explanation. " * 200
     subs = [
         SubScore(name="deterministic", value=0.5, weight=0.45, metadata={"checks": {}}),
-        SubScore(name="llm_judge", value=0.8, weight=0.55, metadata=dict(meta)),
+        SubScore(
+            name="LLMJudgeGrader",
+            value=0.8,
+            weight=0.55,
+            children=[
+                SubScore(
+                    name="factual_accuracy",
+                    value=1.0,
+                    info={"reason": explanation},
+                )
+            ],
+            metadata=dict(meta),
+        ),
         SubScore(name="fabrication_guard", value=1.0, weight=0.0, metadata=dict(meta)),
     ]
-    out = native_grading._as_dict(_combine_subscores(subs), status="ok", deterministic={"checks": {}})
-    frame = json.dumps(out).encode()
+    out = native_grading._finalize(_combine_subscores(subs), status="ok")
+    frame = out.model_dump_json().encode()
     assert len(frame) < 65_536, f"grading frame {len(frame)} bytes exceeds the 64KB wire limit"
+    assert out.subscores is not None
+    assert "_parameters" not in (out.subscores[1].info or {})
+    assert out.subscores[1].children is not None
+    assert out.subscores[1].children[0].info == {"reason": explanation}
 
 
 def test_load_grader_resolves_siblings_without_repo_on_path(monkeypatch):
@@ -157,9 +183,10 @@ async def test_real_acct_deterministic_axis(tmp_path, monkeypatch):
     wb.save(str(deliv))
 
     out = await _load_grader(ACCT).grade(tmp_path, deliv, _rubric(ACCT))
-    assert out["info"]["status"] == "det_only:no_hud_api_key"
+    assert out.info["status"] == "det_only:no_hud_api_key"
     # det-only, so reward <= det_weight; a real sample should clear zero.
-    assert 0.0 < out["reward"] <= 0.45 + 1e-9
-    det = out["info"]["deterministic"]["checks"]
+    assert 0.0 < out.reward <= 0.45 + 1e-9
+    subs = {subscore.name: subscore for subscore in (out.subscores or [])}
+    det = (subs["deterministic"].info or {})["checks"]
     assert det["parseable_xlsx"] == 1.0
     assert det["is_a_sample_not_whole_population"] == 1.0
